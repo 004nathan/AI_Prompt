@@ -1,0 +1,19 @@
+{
+  "name": "url-template-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Analyze webpages for LHS template, scroll position, and section counts.",
+  "scripts": {
+  "analyze": "node analyze-urls.mjs",
+  "server": "node server.mjs",
+  "build:ui": "cd migration-analyzer-ui && npm install && npm run build"
+},
+  "dependencies": {
+    "axios": "^1.12.2",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
+
