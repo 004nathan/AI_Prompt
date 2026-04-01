@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 const API_ENDPOINT = "/api/analyze"; // adjust if your backend uses a different path
@@ -19,6 +19,155 @@ const tdStyle = {
   color: "var(--text)",
   fontSize: 13,
 };
+
+const WAIT_TIPS = [
+  "Every page is fetched and parsed—bigger batches need a bit more patience.",
+  "Sections are fingerprinted and compared across URLs while you wait.",
+  "Fun fact: the first HTML spec fit on a handful of pages. Your help docs… maybe more.",
+  "Left-hand nav, scroll targets, and common blocks—we’re mapping the whole picture.",
+  "Grab a coffee—or tap the star below a few times. We won’t tell.",
+];
+
+function randomStarPosition() {
+  return {
+    leftPct: 8 + Math.random() * 72,
+    topPct: 8 + Math.random() * 58,
+  };
+}
+
+function WaitPlayground({ active }) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [starPos, setStarPos] = useState(() => randomStarPosition());
+  const moveTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) {
+      if (moveTimerRef.current) {
+        window.clearInterval(moveTimerRef.current);
+        moveTimerRef.current = null;
+      }
+      return;
+    }
+    setScore(0);
+    setStarPos(randomStarPosition());
+    setTipIndex(0);
+
+    const tipId = window.setInterval(() => {
+      setTipIndex((i) => (i + 1) % WAIT_TIPS.length);
+    }, 4500);
+    moveTimerRef.current = window.setInterval(() => {
+      setStarPos(randomStarPosition());
+    }, 1400);
+
+    return () => {
+      window.clearInterval(tipId);
+      if (moveTimerRef.current) {
+        window.clearInterval(moveTimerRef.current);
+        moveTimerRef.current = null;
+      }
+    };
+  }, [active]);
+
+  if (!active) return null;
+
+  const catchStar = () => {
+    setScore((s) => s + 1);
+    setStarPos(randomStarPosition());
+  };
+
+  return (
+    <section
+      style={{
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 12,
+        border: "1px dashed var(--border-2)",
+        background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(168, 85, 247, 0.06))",
+      }}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>
+          While pages are analyzed…
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+          This can take a while for many URLs. Here’s a tiny game and a rotating tip.
+        </div>
+      </div>
+
+      <div className="wait-shimmer-track" style={{ marginBottom: 12 }}>
+        <div className="wait-shimmer-bar" />
+      </div>
+
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--text)",
+          minHeight: 40,
+          margin: "0 0 12px",
+          lineHeight: 1.45,
+        }}
+      >
+        {WAIT_TIPS[tipIndex]}
+      </p>
+
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 420,
+          height: 168,
+          margin: "0 auto",
+          borderRadius: 10,
+          border: "1px solid var(--border)",
+          background: "var(--panel)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 10,
+            fontSize: 11,
+            color: "var(--muted)",
+            zIndex: 1,
+          }}
+        >
+          Star catch — tap the ⭐ (score: {score})
+        </div>
+        <button
+          type="button"
+          onClick={catchStar}
+          style={{
+            position: "absolute",
+            left: `${starPos.leftPct}%`,
+            top: `${starPos.topPct}%`,
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            border: "2px solid var(--primary)",
+            background: "var(--bg)",
+            cursor: "pointer",
+            fontSize: 22,
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(37, 99, 235, 0.35)",
+            transform: "translate(-50%, -50%)",
+            padding: 0,
+          }}
+          aria-label="Catch the star"
+        >
+          ⭐
+        </button>
+      </div>
+    </section>
+  );
+}
 
 function App() {
   const [theme, setTheme] = useState("light"); // light | dark
@@ -334,6 +483,8 @@ function App() {
             {error}
           </div>
         )}
+
+        {loading && <WaitPlayground active={loading} />}
       </section>
 
       {counts.c403 > 0 && (

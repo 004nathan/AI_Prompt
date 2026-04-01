@@ -55,3 +55,34 @@ body {
   align-items: center;
   padding: 24px 16px;
 }
+
+@keyframes wait-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.wait-shimmer-track {
+  position: relative;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.wait-shimmer-bar {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--primary),
+    transparent
+  );
+  animation: wait-shimmer 1.2s ease-in-out infinite;
+}
