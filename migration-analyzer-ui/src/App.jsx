@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import FileExtractor from "./components/FileExtractor.jsx";
 
@@ -159,7 +159,6 @@ function App() {
   const [urlsInput, setUrlsInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState([]);
   const [reportText, setReportText] = useState("");
   const [copyStatus, setCopyStatus] = useState("idle"); // idle | copying | copied
 
@@ -182,7 +181,6 @@ function App() {
 
   const handleAnalyze = async () => {
     setError(null);
-    setResults([]);
     setReportText("");
 
     const urls = urlsInput
@@ -214,7 +212,6 @@ function App() {
       }
 
       const data = await res.json();
-      setResults(data.results || []);
       setReportText(data.report || "");
     } catch (e) {
       setError(e.message || "Failed to analyze URLs.");
@@ -294,12 +291,6 @@ function App() {
       event.target.value = "";
     }
   };
-
-  const counts = useMemo(() => {
-    const c403 = results.filter((r) => r?.error && String(r.error).includes("HTTP 403")).length;
-    const c404 = results.filter((r) => r?.error && String(r.error).includes("HTTP 404")).length;
-    return { c403, c404 };
-  }, [results]);
 
   const isDark = theme === "dark";
 
@@ -579,40 +570,7 @@ function App() {
         {loading && <WaitPlayground active={loading} />}
       </section>
 
-      {counts.c403 > 0 && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "10px 12px",
-            borderRadius: 8,
-            backgroundColor: "var(--warningBg)",
-            border: "1px solid var(--warningBorder)",
-            color: "var(--warningText)",
-            fontSize: 13,
-          }}
-        >
-          {counts.c403} page{counts.c403 === 1 ? "" : "s"} could not be analyzed because access was
-          blocked (HTTP 403).
-        </div>
-      )}
-
-      {counts.c404 > 0 && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "10px 12px",
-            borderRadius: 8,
-            backgroundColor: "var(--warningBg)",
-            border: "1px solid var(--warningBorder)",
-            color: "var(--warningText)",
-            fontSize: 13,
-          }}
-        >
-          {counts.c404} page{counts.c404 === 1 ? "" : "s"} returned not found (HTTP 404).
-        </div>
-      )}
-
-      {/* Full report first */}
+      {/* Full report */}
       <section style={{ marginBottom: 24 }}>
         <div
           style={{

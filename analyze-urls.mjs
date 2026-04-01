@@ -62,7 +62,10 @@ function templateDisplayName(templateType) {
 function getFinalUrlFromResponse(res, requestedUrl) {
   const raw =
     res?.request?.res?.responseUrl ||
+    res?.request?.res?.responseURL ||
     res?.request?.responseURL ||
+    res?.responseURL ||
+    res?.responseUrl ||
     res?.config?.url ||
     requestedUrl;
   try {
@@ -72,10 +75,22 @@ function getFinalUrlFromResponse(res, requestedUrl) {
   }
 }
 
-function normalizeLiveDocumentUrl(href) {
+function normalizeForRedirectEquivalence(href) {
   try {
     const u = new URL(href);
     u.hash = "";
+    u.search = "";
+
+    let host = u.hostname.toLowerCase();
+    if (host.startsWith("www.")) {
+      host = host.slice(4);
+    }
+
+    let protocol = u.protocol.toLowerCase();
+    if (protocol === "http:" || protocol === "https:") {
+      protocol = "https:";
+    }
+
     let path = u.pathname;
     if (path.length > 1 && path.endsWith("/")) {
       path = path.slice(0, -1);
@@ -84,15 +99,18 @@ function normalizeLiveDocumentUrl(href) {
     if (pl === "/index.html" || pl.endsWith("/index.html")) {
       path = path.slice(0, -"/index.html".length) || "/";
     }
-    u.pathname = path || "/";
-    return u.href;
+    path = path || "/";
+
+    const port = u.port;
+    const hostPart = port ? `${host}:${port}` : host;
+    return `${protocol}//${hostPart}${path}`;
   } catch {
     return href;
   }
 }
 
 function sameLiveDocumentUrl(a, b) {
-  return normalizeLiveDocumentUrl(a) === normalizeLiveDocumentUrl(b);
+  return normalizeForRedirectEquivalence(a) === normalizeForRedirectEquivalence(b);
 }
 
 function httpStatusFromMessage(msg) {

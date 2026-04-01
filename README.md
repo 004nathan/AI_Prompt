@@ -61,7 +61,7 @@ Then open `http://localhost:3001` (or your `PORT`).
 | `POST` | `/api/analyze` | `{ "urls": ["https://..."] }` |
 | `POST` | `/api/extract-assets` | `{ "urls": [...] }` or `{ "htmlImports": [...] }` |
 
-Responses include `report` (string) and `results` (per-URL rows) for analyze.
+Responses include `report` (string) and `results` (per-URL rows, optional for tools/CLI); the web UI uses only the **report** text.
 
 ## Environment
 
