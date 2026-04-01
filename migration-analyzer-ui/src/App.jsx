@@ -336,7 +336,6 @@ function App() {
         )}
       </section>
 
-      {/* Structured results table */}
       {counts.c403 > 0 && (
         <div
           style={{
@@ -370,66 +369,8 @@ function App() {
         </div>
       )}
 
-      {results.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-            Structured Results
-          </h2>
-          <div
-            style={{
-              overflowX: "auto",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-              }}
-            >
-              <thead style={{ backgroundColor: "var(--tableHead)" }}>
-                <tr>
-                  <th style={thStyle}>URL</th>
-                  <th style={thStyle}>Template Type</th>
-                  <th style={thStyle}>Scroll Position</th>
-                  <th style={thStyle}>Total Sections</th>
-                  <th style={thStyle}>Common Sections</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r) => (
-                  <tr key={r.url}>
-                    <td style={tdStyle}>
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "var(--link)", textDecoration: "none" }}
-                      >
-                        {r.url}
-                      </a>
-                    </td>
-                    <td style={tdStyle}>{r.template_type}</td>
-                    <td style={tdStyle}>
-                      {r.scroll_position != null ? r.scroll_position : "—"}
-                    </td>
-                    <td style={tdStyle}>
-                      {r.total_sections != null ? r.total_sections : "—"}
-                    </td>
-                    <td style={tdStyle}>
-                      {r.common_sections != null ? r.common_sections : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Raw report content */}
-      <section>
+      {/* Full report first */}
+      <section style={{ marginBottom: 24 }}>
         <div
           style={{
             display: "flex",
@@ -490,6 +431,65 @@ function App() {
           {copyStatus === "copied" ? "Report copied to clipboard." : ""}
         </div>
       </section>
+
+      {/* Structured results second */}
+      {results.length > 0 && (
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            Structured Results
+          </h2>
+          <div
+            style={{
+              overflowX: "auto",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+            }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead style={{ backgroundColor: "var(--tableHead)" }}>
+                <tr>
+                  <th style={thStyle}>URL</th>
+                  <th style={thStyle}>Template Type</th>
+                  <th style={thStyle}>Scroll Position</th>
+                  <th style={thStyle}>Total Sections</th>
+                  <th style={thStyle}>Common Sections</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => (
+                  <tr key={r.url}>
+                    <td style={tdStyle}>
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "var(--link)", textDecoration: "none" }}
+                      >
+                        {r.url}
+                      </a>
+                    </td>
+                    <td style={tdStyle}>{r.template_type}</td>
+                    <td style={tdStyle}>
+                      {r.scroll_position != null ? r.scroll_position : "—"}
+                    </td>
+                    <td style={tdStyle}>
+                      {r.total_sections != null ? r.total_sections : "—"}
+                    </td>
+                    <td style={tdStyle}>
+                      {r.common_sections != null ? r.common_sections : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
