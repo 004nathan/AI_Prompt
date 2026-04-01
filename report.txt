@@ -2,4 +2,4 @@ No LHS
 
 scroll_posiition null, common_sections 0
 
-https://mcms.csez.zohocorpin.com/msp-central/index.html
+http://manageengine.com/msp-central/index.html
