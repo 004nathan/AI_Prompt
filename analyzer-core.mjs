@@ -98,16 +98,31 @@ function getFinalUrlFromResponse(res, requestedUrl) {
   }
 }
 
-function urlsEquivalent(a, b) {
+/**
+ * Normalizes URLs so "live" document pairs match: e.g. `/dir/` vs `/dir/index.html`
+ * vs `/dir` are treated as the same document (not a meaningful redirect for reporting).
+ */
+function normalizeLiveDocumentUrl(href) {
   try {
-    const ua = new URL(a);
-    const ub = new URL(b);
-    ua.hash = "";
-    ub.hash = "";
-    return ua.href === ub.href;
+    const u = new URL(href);
+    u.hash = "";
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith("/")) {
+      path = path.slice(0, -1);
+    }
+    const pl = path.toLowerCase();
+    if (pl === "/index.html" || pl.endsWith("/index.html")) {
+      path = path.slice(0, -"/index.html".length) || "/";
+    }
+    u.pathname = path || "/";
+    return u.href;
   } catch {
-    return a === b;
+    return href;
   }
+}
+
+function sameLiveDocumentUrl(a, b) {
+  return normalizeLiveDocumentUrl(a) === normalizeLiveDocumentUrl(b);
 }
 
 async function fetchHtml(url, timeoutMs, { headers = {}, cookie = "", attempt = 0 } = {}) {
@@ -132,7 +147,7 @@ async function fetchHtml(url, timeoutMs, { headers = {}, cookie = "", attempt = 
   });
 
   const finalUrl = getFinalUrlFromResponse(res, url);
-  const redirected = !urlsEquivalent(url, finalUrl);
+  const redirected = !sameLiveDocumentUrl(url, finalUrl);
   const body = String(res.data ?? "");
 
   if (res.status >= 200 && res.status < 300) {
@@ -353,7 +368,7 @@ function buildGroupedReport(okResults, failedResults) {
   }
 
   const redirectedRows = okResults
-    .filter((r) => r.redirected && r.final_url && !urlsEquivalent(r.url, r.final_url))
+    .filter((r) => r.redirected)
     .slice()
     .sort((a, b) => a.url.localeCompare(b.url));
   if (redirectedRows.length) {
@@ -378,7 +393,7 @@ function buildGroupedReport(okResults, failedResults) {
     lines.push("");
     for (const r of notFound.slice().sort((a, b) => a.url.localeCompare(b.url))) {
       const hop =
-        r.final_url && !urlsEquivalent(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
+        r.final_url && !sameLiveDocumentUrl(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
       lines.push(`${r.url}${hop}  (${r.error})`);
     }
     lines.push("");
@@ -390,7 +405,7 @@ function buildGroupedReport(okResults, failedResults) {
     lines.push("");
     for (const r of otherFailed.slice().sort((a, b) => a.url.localeCompare(b.url))) {
       const hop =
-        r.final_url && !urlsEquivalent(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
+        r.final_url && !sameLiveDocumentUrl(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
       lines.push(`${r.url}${hop}  (${r.error})`);
     }
     lines.push("");

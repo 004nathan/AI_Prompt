@@ -51,7 +51,7 @@ If port **3001** is busy, set `PORT=3002 npm run server` and point the Vite prox
 - **Fetched HTML only:** no browser; no JavaScript execution. Client-rendered-only forms may be invisible.
 - **Form detection** is heuristic (`<form>`, iframe URLs, raw HTML patterns). False negatives/positives are possible.
 - **Remote failures:** HTTP **403**, timeouts, and bot blocking are environment-dependent; retries and headers help but do not guarantee access.
-- **Redirects / 404:** Final URL comes from the HTTP client’s response URL; edge cases (meta refresh, JS redirects) are not modeled.
+- **Redirects / 404:** Final URL comes from the HTTP client’s response URL. A URL is **not** counted as redirected when it differs from the final URL only by trivial “live document” variants (trailing slash and/or `index.html` vs directory URL). Edge cases (meta refresh, JS redirects) are not modeled.
 
 ---
 
