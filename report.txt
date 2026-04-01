@@ -1,45 +1,7 @@
 LHS 1
 
-scroll_posiition 3, common_sections 2
-
-https://www.manageengine.com/products/desktop-central/kb/ad_cs_certificate_template_guidance.html
-
-
-
-LHS 2
-
-scroll_posiition 2, common_sections 0
-
-https://www.manageengine.com/products/desktop-central/software-installation/latest-software.html
-
-
-scroll_posiition 2, common_sections 2
-
-https://www.manageengine.com/products/desktop-central/summary-server/architecture.html
-
-
-scroll_posiition 2, common_sections 3
-
-https://www.manageengine.com/products/desktop-central/system-requirements.html
-
-
-
-LHS 3
-
-scroll_posiition 2, common_sections 3
-
-https://www.manageengine.com/products/desktop-central/using-postgresql-database-how-to.html
-https://www.manageengine.com/products/desktop-central/viewing-remote-control-history-how-to.html
-
-
-
-No LHS
-
-scroll_posiition 2, common_sections 3
-
-https://www.manageengine.com/products/desktop-central/security-webinar.html
-
-
 scroll_posiition 3, common_sections 1
 
-https://www.manageengine.com/products/desktop-central/training-videos/asset-management.html
+https://www.manageengine.com/products/desktop-central/help/account-deletion.html
+https://www.manageengine.com/products/desktop-central/help/ad-sync-troubleshoot.html
+https://www.manageengine.com/products/desktop-central/help/agent-migration-from-patch-manager-plus-to-endpoint-central.html

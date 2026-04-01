@@ -120,6 +120,16 @@ function findLhsTreeElement($) {
     .first();
 }
 
+/**
+ * Only <section> elements that contain (or are) btmBar / customers markers are
+ * considered for cross-page "common section" matching.
+ */
+function sectionHasCommonMarkers($, secNode) {
+  const $sec = $(secNode);
+  if ($sec.is(".btmBar, #btmBar, .customers, #customers")) return true;
+  return $sec.find(".btmBar, #btmBar, .customers, #customers").length > 0;
+}
+
 function analyzeHtml(html) {
   const $ = cheerio.load(html);
 
@@ -134,7 +144,10 @@ function analyzeHtml(html) {
     : null;
 
   const sections = $("section").toArray();
-  const sectionFingerprints = sections.map((sec) => elementFingerprint($, sec));
+  // Fingerprint only sections that qualify for "common" detection; others are null (excluded).
+  const sectionFingerprints = sections.map((sec) =>
+    sectionHasCommonMarkers($, sec) ? elementFingerprint($, sec) : null,
+  );
   const totalSections = sections.length;
 
   let scrollPosition = null;
@@ -284,7 +297,7 @@ export async function analyzeUrls(urls, options = {}) {
 
   const fingerprintToPageCount = new Map();
   for (const r of ok) {
-    const uniqueInPage = new Set(r.sectionFingerprints);
+    const uniqueInPage = new Set(r.sectionFingerprints.filter((fp) => fp != null));
     for (const fp of uniqueInPage) {
       fingerprintToPageCount.set(fp, (fingerprintToPageCount.get(fp) ?? 0) + 1);
     }
@@ -322,7 +335,7 @@ export async function analyzeUrls(urls, options = {}) {
 
     const template_type = r.hasLhsTree ? lhsGroupName(r.lhsSignature) : "NO_LHS";
     const common_sections = r.sectionFingerprints.reduce(
-      (acc, fp) => acc + (commonSet.has(fp) ? 1 : 0),
+      (acc, fp) => acc + (fp != null && commonSet.has(fp) ? 1 : 0),
       0,
     );
 
