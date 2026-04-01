@@ -85,6 +85,31 @@ function originFromUrl(url) {
   }
 }
 
+function getFinalUrlFromResponse(res, requestedUrl) {
+  const raw =
+    res?.request?.res?.responseUrl ||
+    res?.request?.responseURL ||
+    res?.config?.url ||
+    requestedUrl;
+  try {
+    return String(raw);
+  } catch {
+    return requestedUrl;
+  }
+}
+
+function urlsEquivalent(a, b) {
+  try {
+    const ua = new URL(a);
+    const ub = new URL(b);
+    ua.hash = "";
+    ub.hash = "";
+    return ua.href === ub.href;
+  } catch {
+    return a === b;
+  }
+}
+
 async function fetchHtml(url, timeoutMs, { headers = {}, cookie = "", attempt = 0 } = {}) {
   const origin = originFromUrl(url);
   const reqHeaders = {
@@ -103,10 +128,32 @@ async function fetchHtml(url, timeoutMs, { headers = {}, cookie = "", attempt = 
     timeout: timeoutMs,
     headers: reqHeaders,
     responseType: "text",
+    validateStatus: () => true,
   });
 
-  if (res.status >= 200 && res.status < 300) return String(res.data);
-  throw new Error(`HTTP ${res.status}`);
+  const finalUrl = getFinalUrlFromResponse(res, url);
+  const redirected = !urlsEquivalent(url, finalUrl);
+  const body = String(res.data ?? "");
+
+  if (res.status >= 200 && res.status < 300) {
+    return {
+      html: body,
+      final_url: finalUrl,
+      redirected,
+      http_status: res.status,
+    };
+  }
+
+  const err = new Error(`HTTP ${res.status}`);
+  err.final_url = finalUrl;
+  err.redirected = redirected;
+  err.http_status = res.status;
+  throw err;
+}
+
+function httpStatusFromMessage(msg) {
+  const m = /HTTP (\d{3})/.exec(String(msg ?? ""));
+  return m ? Number(m[1]) : null;
 }
 
 function findLhsTreeElement($) {
@@ -130,8 +177,55 @@ function sectionHasCommonMarkers($, secNode) {
   return $sec.find(".btmBar, #btmBar, .customers, #customers").length > 0;
 }
 
+/**
+ * A “form page” has a native <form> and/or an iframe that typically embeds a form
+ * (Zoho Creator, Google Forms, Typeform, etc.). Raw HTML checks catch edge cases where
+ * the parser misses markup (fragment quirks, minification).
+ */
+function detectFormPageSignals($, htmlRaw = "") {
+  const raw = htmlRaw || "";
+  let has_native_form = $("form").length > 0;
+  if (!has_native_form) {
+    has_native_form = $("[data-attr='form-container'] form, [data-attr=\"form-container\"] form").length > 0;
+  }
+  if (!has_native_form) {
+    has_native_form = $('form[action*="zoho"], form[action*="creator"], form[action*="form/"]').length > 0;
+  }
+  if (!has_native_form && /<\s*form\b/i.test(raw)) {
+    has_native_form = true;
+  }
+  if (!has_native_form && /<\s*form\b[^>]{0,2000}\baction\s*=\s*["'][^"']*zoho/i.test(raw)) {
+    has_native_form = true;
+  }
+  if (!has_native_form && /<\s*form\b[^>]{0,2000}\baction\s*=\s*["'][^"']*creatorapp\.zoho/i.test(raw)) {
+    has_native_form = true;
+  }
+
+  let has_iframe_form_embed = false;
+  for (const el of $("iframe[src]").toArray()) {
+    const src = ($(el).attr("src") || "").toLowerCase();
+    if (
+      /zoho|creator|\.zoho\./i.test(src) ||
+      /typeform|jotform|wufoo|formstack|123formbuilder|google\.com\/forms|\/forms\/|\/form\?|\/forms\?/i.test(
+        src,
+      ) ||
+      /embed[^/]*form|form[^/]*embed/i.test(src)
+    ) {
+      has_iframe_form_embed = true;
+      break;
+    }
+  }
+  return {
+    has_native_form,
+    has_iframe_form_embed,
+    is_form_page: has_native_form || has_iframe_form_embed,
+  };
+}
+
 function analyzeHtml(html) {
   const $ = cheerio.load(html);
+
+  const { has_native_form, has_iframe_form_embed, is_form_page } = detectFormPageSignals($, html);
 
   const lhsTreeEl = findLhsTreeElement($);
   const hasLhsTree = lhsTreeEl.length > 0;
@@ -158,7 +252,16 @@ function analyzeHtml(html) {
     scrollPosition = idx >= 0 ? idx + 1 : null;
   }
 
-  return { hasLhsTree, lhsSignature, scrollPosition, totalSections, sectionFingerprints };
+  return {
+    hasLhsTree,
+    lhsSignature,
+    scrollPosition,
+    totalSections,
+    sectionFingerprints,
+    has_native_form,
+    has_iframe_form_embed,
+    is_form_page,
+  };
 }
 
 async function mapLimit(items, limit, mapper) {
@@ -236,11 +339,59 @@ function buildGroupedReport(okResults, failedResults) {
     }
   }
 
-  if (failedResults?.length) {
+  const formUrls = okResults
+    .filter((r) => r.is_form_page)
+    .map((r) => r.url)
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
+  if (formUrls.length) {
+    lines.push("Form pages");
+    lines.push("");
+    for (const u of formUrls) lines.push(u);
+    lines.push("");
+    lines.push("");
+  }
+
+  const redirectedRows = okResults
+    .filter((r) => r.redirected && r.final_url && !urlsEquivalent(r.url, r.final_url))
+    .slice()
+    .sort((a, b) => a.url.localeCompare(b.url));
+  if (redirectedRows.length) {
+    lines.push("Redirected pages");
+    lines.push("");
+    for (const r of redirectedRows) {
+      lines.push(`${r.url} -> ${r.final_url}`);
+    }
+    lines.push("");
+    lines.push("");
+  }
+
+  const notFound = (failedResults ?? []).filter(
+    (r) => r.http_status === 404 || /HTTP 404/.test(String(r.error || "")),
+  );
+  const otherFailed = (failedResults ?? []).filter(
+    (r) => !(r.http_status === 404 || /HTTP 404/.test(String(r.error || ""))),
+  );
+
+  if (notFound.length) {
+    lines.push("404 pages");
+    lines.push("");
+    for (const r of notFound.slice().sort((a, b) => a.url.localeCompare(b.url))) {
+      const hop =
+        r.final_url && !urlsEquivalent(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
+      lines.push(`${r.url}${hop}  (${r.error})`);
+    }
+    lines.push("");
+    lines.push("");
+  }
+
+  if (otherFailed.length) {
     lines.push("Failed fetch/parse");
     lines.push("");
-    for (const r of failedResults.slice().sort((a, b) => a.url.localeCompare(b.url))) {
-      lines.push(`${r.url}  (${r.error})`);
+    for (const r of otherFailed.slice().sort((a, b) => a.url.localeCompare(b.url))) {
+      const hop =
+        r.final_url && !urlsEquivalent(r.url, r.final_url) ? ` -> ${r.final_url}` : "";
+      lines.push(`${r.url}${hop}  (${r.error})`);
     }
     lines.push("");
   }
@@ -260,12 +411,12 @@ export async function analyzeUrls(urls, options = {}) {
 
   const loaded = await mapLimit(urls, concurrency, async (url) => {
     try {
-      let html;
+      let fetchResult;
       let lastErr;
       const maxAttempts = Math.max(1, Number(retries) || 0) + 1;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         try {
-          html = await fetchHtml(url, timeoutMs, { headers, cookie, attempt });
+          fetchResult = await fetchHtml(url, timeoutMs, { headers, cookie, attempt });
           lastErr = null;
           break;
         } catch (e) {
@@ -275,19 +426,49 @@ export async function analyzeUrls(urls, options = {}) {
           if (!/HTTP (403|429|500|502|503|504)/.test(msg)) break;
         }
       }
-      if (!html) throw lastErr ?? new Error("Fetch failed");
-      const { hasLhsTree, lhsSignature, scrollPosition, totalSections, sectionFingerprints } =
-        analyzeHtml(html);
-      return { url, hasLhsTree, lhsSignature, scrollPosition, totalSections, sectionFingerprints };
-    } catch (e) {
+      if (!fetchResult) throw lastErr ?? new Error("Fetch failed");
+      const { html, final_url, redirected, http_status } = fetchResult;
+      const {
+        hasLhsTree,
+        lhsSignature,
+        scrollPosition,
+        totalSections,
+        sectionFingerprints,
+        has_native_form,
+        has_iframe_form_embed,
+        is_form_page,
+      } = analyzeHtml(html);
       return {
         url,
+        final_url,
+        redirected,
+        http_status,
+        hasLhsTree,
+        lhsSignature,
+        scrollPosition,
+        totalSections,
+        sectionFingerprints,
+        has_native_form,
+        has_iframe_form_embed,
+        is_form_page,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const st = e?.http_status ?? httpStatusFromMessage(msg);
+      return {
+        url,
+        final_url: e?.final_url ?? null,
+        redirected: e?.redirected ?? null,
+        http_status: st,
         hasLhsTree: null,
         lhsSignature: null,
         scrollPosition: null,
         totalSections: null,
         sectionFingerprints: null,
-        error: e instanceof Error ? e.message : String(e),
+        has_native_form: null,
+        has_iframe_form_embed: null,
+        is_form_page: null,
+        error: msg,
       };
     }
   });
@@ -325,10 +506,16 @@ export async function analyzeUrls(urls, options = {}) {
     if (r?.error) {
       return {
         url: r.url,
+        final_url: r.final_url ?? null,
+        redirected: r.redirected ?? null,
+        http_status: r.http_status ?? null,
         template_type: null,
         scroll_position: null,
         total_sections: null,
         common_sections: null,
+        is_form_page: null,
+        has_native_form: null,
+        has_iframe_form_embed: null,
         error: r.error,
       };
     }
@@ -341,10 +528,16 @@ export async function analyzeUrls(urls, options = {}) {
 
     return {
       url: r.url,
+      final_url: r.final_url ?? r.url,
+      redirected: Boolean(r.redirected),
+      http_status: r.http_status ?? 200,
       template_type,
       scroll_position: r.scrollPosition,
       total_sections: r.totalSections,
       common_sections,
+      is_form_page: r.is_form_page,
+      has_native_form: r.has_native_form,
+      has_iframe_form_embed: r.has_iframe_form_embed,
     };
   });
 

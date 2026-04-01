@@ -1,7 +1,5 @@
-LHS 1
+No LHS
 
-scroll_posiition 3, common_sections 1
+scroll_posiition null, common_sections 0
 
-https://www.manageengine.com/products/desktop-central/help/account-deletion.html
-https://www.manageengine.com/products/desktop-central/help/ad-sync-troubleshoot.html
-https://www.manageengine.com/products/desktop-central/help/agent-migration-from-patch-manager-plus-to-endpoint-central.html
+https://mcms.csez.zohocorpin.com/msp-central/index.html

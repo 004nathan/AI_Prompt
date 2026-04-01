@@ -1,24 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import FileExtractor from "./components/FileExtractor.jsx";
 
 const API_ENDPOINT = "/api/analyze"; // adjust if your backend uses a different path
-
-const thStyle = {
-  textAlign: "left",
-  padding: "8px 10px",
-  borderBottom: "1px solid var(--border)",
-  fontWeight: 600,
-  fontSize: 12,
-  color: "var(--muted)",
-};
-
-const tdStyle = {
-  padding: "8px 10px",
-  borderBottom: "1px solid var(--border)",
-  verticalAlign: "top",
-  color: "var(--text)",
-  fontSize: 13,
-};
 
 const WAIT_TIPS = [
   "Every page is fetched and parsed—bigger batches need a bit more patience.",
@@ -170,6 +154,7 @@ function WaitPlayground({ active }) {
 }
 
 function App() {
+  const [mainTab, setMainTab] = useState("migration"); // migration | fileExtractor
   const [theme, setTheme] = useState("light"); // light | dark
   const [urlsInput, setUrlsInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -358,10 +343,71 @@ function App() {
           </button>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 14 }}>
-          Paste URLs, run the analyzer, and view the migration report.
+          {mainTab === "migration"
+            ? "Paste URLs, run the analyzer, and view the migration report."
+            : "Extract CSS, JS, and image paths (filtered) from page URLs or uploaded HTML files."}
         </p>
       </header>
 
+      <div
+        role="tablist"
+        aria-label="Main sections"
+        style={{
+          display: "flex",
+          gap: 4,
+          marginBottom: 20,
+          padding: 4,
+          borderRadius: 10,
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          width: "fit-content",
+        }}
+      >
+        {[
+          { id: "migration", label: "Migration" },
+          { id: "fileExtractor", label: "File Extractor" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={mainTab === t.id}
+            onClick={() => setMainTab(t.id)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: mainTab === t.id ? "var(--primary)" : "transparent",
+              color: mainTab === t.id ? "#fff" : "var(--text)",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {mainTab === "fileExtractor" && (
+        <section
+          style={{
+            backgroundColor: "var(--panel)",
+            borderRadius: 12,
+            padding: 20,
+            border: "1px solid var(--border)",
+            marginBottom: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>
+            File Extractor
+          </h2>
+          <FileExtractor />
+        </section>
+      )}
+
+      {mainTab === "migration" && (
+      <>
       {/* URL input + actions */}
       <section
         style={{
@@ -372,28 +418,74 @@ function App() {
           marginBottom: 24,
         }}
       >
-        <label style={{ display: "block", fontWeight: 500, fontSize: 14 }}>
-          URLs
-          <textarea
-            value={urlsInput}
-            onChange={(e) => setUrlsInput(e.target.value)}
-            placeholder={"https://example.com/page1.html\nhttps://example.com/page2.html"}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+            marginBottom: 4,
+          }}
+        >
+          <label style={{ display: "block", fontWeight: 500, fontSize: 14 }}>
+            URLs
+            <textarea
+              value={urlsInput}
+              onChange={(e) => setUrlsInput(e.target.value)}
+              placeholder={"https://example.com/page1.html\nhttps://example.com/page2.html"}
+              style={{
+                marginTop: 6,
+                width: "100%",
+                minHeight: 120,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid var(--border-2)",
+                fontFamily: "monospace",
+                fontSize: 13,
+                resize: "vertical",
+                boxSizing: "border-box",
+                background: "var(--bg)",
+                color: "var(--text)",
+              }}
+            />
+          </label>
+
+          <div
             style={{
-              marginTop: 6,
-              width: "100%",
-              minHeight: 120,
-              padding: 10,
-              borderRadius: 8,
-              border: "1px solid var(--border-2)",
-              fontFamily: "monospace",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: 16,
+              background: "linear-gradient(160deg, rgba(59,130,246,0.06), rgba(99,102,241,0.04))",
               fontSize: 13,
-              resize: "vertical",
-              boxSizing: "border-box",
-              background: "var(--bg)",
-              color: "var(--text)",
+              color: "var(--muted)",
+              lineHeight: 1.55,
+              alignSelf: "start",
             }}
-          />
-        </label>
+          >
+            <strong style={{ color: "var(--text)", display: "block", marginBottom: 8 }}>What you get</strong>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>LHS</strong>,{" "}
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>ME PRD LHS</strong>,{" "}
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>scroll position</strong>, and{" "}
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>common sections</strong> (grouped in the
+                report).
+              </li>
+              <li>
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>Form pages</strong> —{" "}
+                <code style={{ fontSize: 11 }}>&lt;form&gt;</code>, form-style{" "}
+                <code style={{ fontSize: 11 }}>iframe</code>s, and raw HTML fallbacks; listed in the full report.
+              </li>
+              <li>
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>Redirected pages</strong> — requested URL
+                → final URL when the response chain differs.
+              </li>
+              <li>
+                <strong style={{ color: "var(--text)", fontWeight: 600 }}>404 pages</strong> — URLs whose final
+                response is HTTP 404 (including after redirects).
+              </li>
+            </ul>
+          </div>
+        </div>
 
         <div
           style={{
@@ -582,64 +674,7 @@ function App() {
           {copyStatus === "copied" ? "Report copied to clipboard." : ""}
         </div>
       </section>
-
-      {/* Structured results second */}
-      {results.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-            Structured Results
-          </h2>
-          <div
-            style={{
-              overflowX: "auto",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-              }}
-            >
-              <thead style={{ backgroundColor: "var(--tableHead)" }}>
-                <tr>
-                  <th style={thStyle}>URL</th>
-                  <th style={thStyle}>Template Type</th>
-                  <th style={thStyle}>Scroll Position</th>
-                  <th style={thStyle}>Total Sections</th>
-                  <th style={thStyle}>Common Sections</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r) => (
-                  <tr key={r.url}>
-                    <td style={tdStyle}>
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "var(--link)", textDecoration: "none" }}
-                      >
-                        {r.url}
-                      </a>
-                    </td>
-                    <td style={tdStyle}>{r.template_type}</td>
-                    <td style={tdStyle}>
-                      {r.scroll_position != null ? r.scroll_position : "—"}
-                    </td>
-                    <td style={tdStyle}>
-                      {r.total_sections != null ? r.total_sections : "—"}
-                    </td>
-                    <td style={tdStyle}>
-                      {r.common_sections != null ? r.common_sections : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+      </>
       )}
     </div>
   );
