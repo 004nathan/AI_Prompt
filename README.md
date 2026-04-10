@@ -67,6 +67,7 @@ Responses include `report` (string) and `results` (per-URL rows, optional for to
 
 - **`PORT`**: HTTP port for `server.mjs` (default `3001`).
 - **HTTPS / TLS**: Hosts under **`*.csez.zohocorpin.com`** use relaxed certificate verification automatically (internal staging chains). For other hosts that still fail with “unable to verify the first certificate”, set **`MIGRATION_ANALYZER_TLS_INSECURE=1`**, or point **`NODE_EXTRA_CA_CERTS`** at your corporate CA bundle (safer).
+- **Mutual TLS (client certificate)**: If requests fail with **`tlsv13 alert certificate required`** (OpenSSL alert **116**), the server expects a **client** certificate; fixing the server chain alone is not enough. Set **`MIGRATION_ANALYZER_TLS_CLIENT_PFX`** to a `.p12` / `.pfx` file, or **`MIGRATION_ANALYZER_TLS_CLIENT_CERT`** and **`MIGRATION_ANALYZER_TLS_CLIENT_KEY`** to PEM files. Use **`MIGRATION_ANALYZER_TLS_CLIENT_KEY_PASSPHRASE`** when the key or PFX is encrypted. Restart the API after changing these variables.
 
 ## Maintainer docs
 

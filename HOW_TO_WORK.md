@@ -51,7 +51,7 @@ If port **3001** is busy, set `PORT=3002 npm run server` and point the Vite prox
 - **Fetched HTML only:** no browser; no JavaScript execution. Client-rendered-only forms may be invisible.
 - **Form detection** is heuristic (`<form>`, iframe URLs, raw HTML patterns). False negatives/positives are possible.
 - **Remote failures:** HTTP **403**, timeouts, and bot blocking are environment-dependent; retries and headers help but do not guarantee access.
-- **TLS:** `*.csez.zohocorpin.com` uses `rejectUnauthorized: false` via `http-agents.mjs`. Other internal hosts: `MIGRATION_ANALYZER_TLS_INSECURE=1` or `NODE_EXTRA_CA_CERTS`.
+- **TLS:** `*.csez.zohocorpin.com` uses `rejectUnauthorized: false` via `http-agents.mjs`. Other internal hosts: `MIGRATION_ANALYZER_TLS_INSECURE=1` or `NODE_EXTRA_CA_CERTS`. **mTLS:** if you see **alert 116 / certificate required**, configure client identity in `http-agents.mjs` via `MIGRATION_ANALYZER_TLS_CLIENT_PFX` or `MIGRATION_ANALYZER_TLS_CLIENT_CERT` + `MIGRATION_ANALYZER_TLS_CLIENT_KEY` (and optional `MIGRATION_ANALYZER_TLS_CLIENT_KEY_PASSPHRASE`).
 - **Redirects / 404:** The post-redirect URL is taken from `request.res.responseUrl` when present (not only `config.url`, which can still be the original). A URL is **not** counted as redirected when it differs from the final URL only by trivial canonicalization: **apex vs `www`**, **http vs https**, trailing slash, **`index.html` vs directory URL**, or **query string** (e.g. UTMs on one side). Edge cases (meta refresh, JS redirects) are not modeled.
 
 ---

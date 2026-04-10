@@ -1,21 +1,71 @@
 /**
- * Shared HTTP(S) agents for axios. Internal Zoho staging hosts (e.g. *.csez.zohocorpin.com)
- * often use TLS chains Node does not trust → "unable to verify the first certificate".
+ * Shared HTTP(S) agents for axios.
  *
- * Those hosts use relaxed verification automatically. For any other host, set
- * MIGRATION_ANALYZER_TLS_INSECURE=1 to disable verification, or use NODE_EXTRA_CA_CERTS
- * with your corporate CA PEM (preferred).
+ * - *.csez.zohocorpin.com: relaxed server-cert verification (internal chains).
+ * - MIGRATION_ANALYZER_TLS_INSECURE=1: relax verification for all hosts.
+ * - Mutual TLS: if the server returns "certificate required" (TLS alert 116), set
+ *   MIGRATION_ANALYZER_TLS_CLIENT_CERT + MIGRATION_ANALYZER_TLS_CLIENT_KEY (PEM paths),
+ *   or MIGRATION_ANALYZER_TLS_CLIENT_PFX (.p12 / .pfx), optional
+ *   MIGRATION_ANALYZER_TLS_CLIENT_KEY_PASSPHRASE.
  */
+import { existsSync, readFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 
 export const httpAgent = new http.Agent({ keepAlive: true });
 
-export const httpsAgentStrict = new https.Agent({ keepAlive: true });
+function loadOptionalClientTlsIdentity() {
+  const passphrase = process.env.MIGRATION_ANALYZER_TLS_CLIENT_KEY_PASSPHRASE || undefined;
+  const pfxPath = process.env.MIGRATION_ANALYZER_TLS_CLIENT_PFX;
+  if (pfxPath) {
+    try {
+      if (!existsSync(pfxPath)) {
+        console.warn(`[http-agents] MIGRATION_ANALYZER_TLS_CLIENT_PFX not found: ${pfxPath}`);
+        return {};
+      }
+      const o = { pfx: readFileSync(pfxPath) };
+      if (passphrase) o.passphrase = passphrase;
+      console.info("[http-agents] Using TLS client identity (PFX)");
+      return o;
+    } catch (e) {
+      console.warn("[http-agents] Failed to read TLS client PFX:", e.message);
+      return {};
+    }
+  }
+  const certPath = process.env.MIGRATION_ANALYZER_TLS_CLIENT_CERT;
+  const keyPath = process.env.MIGRATION_ANALYZER_TLS_CLIENT_KEY;
+  if (certPath && keyPath) {
+    try {
+      if (!existsSync(certPath) || !existsSync(keyPath)) {
+        console.warn("[http-agents] TLS client cert/key path missing on disk");
+        return {};
+      }
+      const o = {
+        cert: readFileSync(certPath),
+        key: readFileSync(keyPath),
+      };
+      if (passphrase) o.passphrase = passphrase;
+      console.info("[http-agents] Using TLS client identity (cert + key)");
+      return o;
+    } catch (e) {
+      console.warn("[http-agents] Failed to read TLS client cert/key:", e.message);
+      return {};
+    }
+  }
+  return {};
+}
+
+const clientTls = loadOptionalClientTlsIdentity();
+
+export const httpsAgentStrict = new https.Agent({
+  keepAlive: true,
+  ...clientTls,
+});
 
 export const httpsAgentInsecure = new https.Agent({
   keepAlive: true,
   rejectUnauthorized: false,
+  ...clientTls,
 });
 
 function tlsVerificationDisabledGlobally() {
@@ -25,7 +75,6 @@ function tlsVerificationDisabledGlobally() {
   return false;
 }
 
-/** mcms.csez.zohocorpin.com and similar — internal staging VPN / corp TLS. */
 function hostUsesKnownInternalStagingCert(hostname) {
   const h = String(hostname || "").toLowerCase();
   return h.endsWith(".csez.zohocorpin.com");
