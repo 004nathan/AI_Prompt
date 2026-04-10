@@ -3,6 +3,7 @@
  */
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { httpAgent, pickHttpsAgentForUrl } from "./http-agents.mjs";
 
 const IMG_EXT = /\.(png|jpe?g|gif|webp|svg|ico|bmp|avif)(\?|$)/i;
 
@@ -151,6 +152,8 @@ export function extractAssetsFromHtml($, baseUrl) {
 
 async function fetchHtml(url, timeoutMs = 30000) {
   const res = await axios.get(url, {
+    httpAgent,
+    httpsAgent: pickHttpsAgentForUrl(url),
     timeout: timeoutMs,
     maxRedirects: 10,
     headers: {

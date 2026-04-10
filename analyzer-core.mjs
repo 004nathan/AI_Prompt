@@ -1,15 +1,11 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
-import http from "node:http";
-import https from "node:https";
-
-const httpAgent = new http.Agent({ keepAlive: true });
-const httpsAgent = new https.Agent({ keepAlive: true });
+import { httpAgent, httpsAgentStrict, pickHttpsAgentForUrl } from "./http-agents.mjs";
 
 const httpClient = axios.create({
   httpAgent,
-  httpsAgent,
+  httpsAgent: httpsAgentStrict,
   maxRedirects: 10,
   validateStatus: () => true,
 });
@@ -163,6 +159,8 @@ async function fetchHtml(url, timeoutMs, { headers = {}, cookie = "", attempt = 
   };
 
   const res = await httpClient.get(url, {
+    httpAgent,
+    httpsAgent: pickHttpsAgentForUrl(url),
     timeout: timeoutMs,
     headers: reqHeaders,
     responseType: "text",
